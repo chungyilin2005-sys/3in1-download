@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三合一會報 - 專屬檔案安全下載中心</title>
+    <style>
+        :root {
+            --primary-color: #1a73e8;
+            --hover-color: #1557b0;
+            --error-color: #d93025;
+            --success-color: #1e8e3e;
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-main: #202124;
+            --text-muted: #5f6368;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+        }
+
+        .header-title {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .header-subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: var(--text-muted);
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #dadce0;
+            border-radius: 8px;
+            font-size: 18px;
+            letter-spacing: 2px;
+            text-align: center;
+            text-transform: uppercase;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        button {
+            width: 100%;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--hover-color);
+        }
+
+        button:disabled {
+            background-color: #a8c7fa;
+            cursor: not-allowed;
+        }
+
+        .status-message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none; /* 預設隱藏 */
+        }
+
+        .status-error {
+            background-color: #fce8e6;
+            color: var(--error-color);
+            border: 1px solid #fad2cf;
+        }
+
+        .status-success {
+            background-color: #e6f4ea;
+            color: var(--success-color);
+            border: 1px solid #ceead6;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="header-title">專屬檔案安全下載中心</h1>
+    <p class="header-subtitle">新竹市115年全民防衛動員暨災害防救(三合一)會報</p>
+
+    <div class="input-group">
+        <label for="accessCode">請輸入您的專屬提取碼</label>
+        <input type="text" id="accessCode" placeholder="例如：8A3B9C2D" autocomplete="off" maxlength="12">
+    </div>
+
+    <button id="downloadBtn" onclick="processDownload()">驗證並下載檔案</button>
+
+    <div id="statusArea" class="status-message"></div>
+</div>
+
+<script>
+    // =========================================================
+    // ⚠️ 請將下方的網址替換成您在 GAS 部署時取得的「網頁應用程式網址」
+    // =========================================================
+    const API_URL = "https://script.google.com/macros/s/AKfycbxkJLJIeD1TWzQB0ls9ebzrtxXuCPjWWslCUYrnsYoQiaBTDoSltx66hqxU6r4x7c0WWw/exec"; 
+
+    async function processDownload() {
+        const codeInput = document.getElementById('accessCode');
+        const btn = document.getElementById('downloadBtn');
+        const statusArea = document.getElementById('statusArea');
+        const code = codeInput.value.trim().toUpperCase();
+
+        if (!code) {
+            showStatus('請輸入提取碼！', 'error');
+            return;
+        }
+
+        // 切換為載入狀態
+        codeInput.disabled = true;
+        btn.disabled = true;
+        btn.innerHTML = '<div class="loader"></div> 驗證並產生檔案中...';
+        statusArea.style.display = 'none';
+
+        try {
+            // 發送請求到 GAS 後端
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ accessCode: code })
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                const fileData = result.data;
+                
+                // 將 Base64 轉換為 Blob 以支援穩定下載
+                const blob = b64toBlob(fileData.data, fileData.mimeType);
+                const blobUrl = URL.createObjectURL(blob);
+                
+                // 建立隱藏的 <a> 標籤觸發下載
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                a.download = fileData.name;
+                document.body.appendChild(a);
+                a.click();
+                
+                // 清理 DOM 與記憶體
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+
+                // 顯示成功訊息
+                showStatus(`✅ 檔案下載成功！<br>此提取碼剩餘下載次數：${fileData.remainingAfter} 次`, 'success');
+                codeInput.value = ''; // 清空輸入框
+            } else {
+                // 顯示 GAS 回傳的錯誤訊息 (如：提取碼無效、次數用盡)
+                showStatus(`❌ 錯誤：${result.message}`, 'error');
+            }
+
+        } catch (error) {
+            console.error('Fetch error:', error);
+            showStatus('連線至伺服器失敗，請稍後再試或聯繫管理單位。', 'error');
+        } finally {
+            // 恢復按鈕狀態
+            codeInput.disabled = false;
+            btn.disabled = false;
+            btn.innerHTML = '驗證並下載檔案';
+        }
+    }
+
+    // 顯示狀態訊息的輔助函數
+    function showStatus(message, type) {
+        const statusArea = document.getElementById('statusArea');
+        statusArea.innerHTML = message;
+        statusArea.className = `status-message status-${type}`;
+        statusArea.style.display = 'block';
+    }
+
+    // 將 Base64 字串轉換為二進制 Blob 的核心函數 (處理大型 PDF 必備)
+    function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
+        const byteCharacters = atob(b64Data);
+        const byteArrays = [];
+
+        for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+            const slice = byteCharacters.slice(offset, offset + sliceSize);
+            const byteNumbers = new Array(slice.length);
+            for (let i = 0; i < slice.length; i++) {
+                byteNumbers[i] = slice.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            byteArrays.push(byteArray);
+        }
+
+        return new Blob(byteArrays, { type: contentType });
+    }
+
+    // 允許使用者按 Enter 鍵觸發下載
+    document.getElementById('accessCode').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            processDownload();
+        }
+    });
+</script>
+
+</body>
+</html>
